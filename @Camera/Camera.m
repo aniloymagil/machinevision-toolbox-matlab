@@ -487,9 +487,11 @@ classdef Camera < handle
                 
                 % project 3D world lines using the class project() method
                 uv = c.project(points, varargin{:});
+                c.hold(true);
                 for line=uv
                     c.homline(line);
                 end
+                c.hold(false)
             else
                 % plot points
                 nr = numrows(points);
@@ -684,7 +686,7 @@ classdef Camera < handle
             % is displaced by the homogeneous transformation T with respect to the
             % current pose of C.
             newcam = CentralCamera(cam);
-            newcam.T = newcam.T * SE3.check(T);
+            newcam.T = newcam.T * SE3.convert(T);
         end
         
         function movedby(c, robot)

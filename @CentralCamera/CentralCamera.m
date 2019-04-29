@@ -639,6 +639,7 @@ classdef CentralCamera < Camera
             if isempty(opt.pose)
                 opt.pose = c.T;
             end
+            opt.pose = SE3.convert(opt.pose);  % ensure it's an SE3 object
 
             if length(opt.objpose) > 1 && length(opt.pose) > 1
                 error('cannot animate object and camera simultaneously');
@@ -649,8 +650,8 @@ classdef CentralCamera < Camera
                 % get camera matrix for this camera pose
                 C = c.C(opt.pose);
                 for i=1:length(P)
-                    l = vex( C * P(i).L * C');
-                    uv(:,i) = l / max(abs(l));
+                    l = vex( C * P(i).skew * C');
+                    uv(:,i) = l / max(abs(l)); % normalize by largest element
                 end
             else
                 % project points

@@ -73,6 +73,8 @@ function [L,N,P,C,E] = ilabel(im, connectivity)
     UNKNOWN = 0;
     THRESH = 0;
     nextlabel = int32(0);  % the highest label yet assigned
+    edge = [];
+    color = [];
     
     for row=1:height
         prevlab = UNKNOWN;
@@ -103,6 +105,8 @@ function [L,N,P,C,E] = ilabel(im, connectivity)
                         
                         labellist = [labellist curlab];  % recycle the old label
                         blobsize(newlabel) = blobsize(newlabel) + blobsize(curlab);
+                        edge(newlabel) = edge(curlab);
+                        color(newlabel) = color(curlab);
                     end
                     curlab = newlabel;
                     
@@ -156,14 +160,12 @@ function [L,N,P,C,E] = ilabel(im, connectivity)
                     parents(northwest) = curlab;
                     
                     % save the coordinate and color of the northwest blob
-                    edge(northwest) = (row-2) + height*(col-2) + 1;
-                    color(northwest) = im(row-1,col-1);
+                    %edge(northwest) = (row-2) + height*(col-2) + 1;
                        
-                    if blobsize(curlab) > THRESH
-                        parents(northwest) = curlab;
-                        %                     else
-                        %                         % its a runt
-                        %                         lmap(curlab) = northwest;
+                    if blobsize(curlab) < THRESH
+                        %
+                        % it's a runt, maybe recycle it
+                        % or just give it to the parent blob lmap(curlab) = northwest;
                     end
                 end
             end
@@ -180,7 +182,10 @@ function [L,N,P,C,E] = ilabel(im, connectivity)
                     curlab = labellist(1);
                     labellist(1) = [];
                 end
+                % new blob, set its size to 0 and note its color
                 blobsize(curlab) = 0;
+                color(curlab) = im(row,col);
+                edge(curlab) = row-1 + height*(col-1) + 1;
             end
             
             blobsize(curlab) = blobsize(curlab) + 1;
@@ -190,18 +195,15 @@ function [L,N,P,C,E] = ilabel(im, connectivity)
             prevpix = curpix;
         end
     end
-        
+    
     % we're done
     % however the labels are not consecutive and the data in the edge, color
     % and parent arrays are sparse
     
     % create a map:  map(label) -> consecutive label
-    map = [];
-    
-    u=unique(limage(:))';
-    for i=1:length(u)
-        map(u(i)) = i;
-    end
+    map = [];    
+    uniqlabels = unique(limage(:))';
+    map(uniqlabels) = 1:length(uniqlabels);
     
     % map the label image
     if nargout > 0
@@ -210,26 +212,39 @@ function [L,N,P,C,E] = ilabel(im, connectivity)
     
     % number of unique labels
     if nargout > 1
-        N = length(u);
+        N = length(uniqlabels);
     end
     
     % parent array
     if nargout > 2
         % find the valid indices into parent, color, edge arrays
-        k = u;
-        k(k>length(edge)) = [];
+        % the edge array has a nonzero entry if the blob has been enclosed
         
-        k2 = k;
-        k2(parents==0) = [];
-        P = zeros(1,N);   % init to zero
-        P(map(k2)) = map(parents(k2)); % map parents and children
+        if isempty(edge)
+            numedge = 0;
+        else
+            numedge = length(edge);
+        end
+        
+        % make a list of valid edge coordinates
+        %  only for blobs that were enclosed, ie. didn't touch the edge
+        k = [];
+        for u=uniqlabels
+            if u <= numedge && edge(u) > 0
+                k = [k u];
+            end
+        end
+
+        P = zeros(1,N);   % init to zero, by default nobody has a parent :(
+        j = find(parents > 0); % take the child-parent relationship noted above
+        % and map both parent and child to new labels
+        P(map(j)) = map(parents(j));
     end
     
     % pixel class array
     if nargout > 3
         % map the entries
-        C = zeros(1,N);
-        C(map(k)) = color(k);
+        C = color( find(map>0) );
     end
     
    % edge point coordinates

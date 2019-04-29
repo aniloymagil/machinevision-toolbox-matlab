@@ -87,7 +87,7 @@
 %
 %   Display an image which contains a map of a region, perhaps an obstacle grid,
 %   that spans real world dimensions x, y in the range -10 to 10.
-%        idisp(map, 'xyscale', {[-10 10], [-10 10]});
+%        idisp(map, 'xydata', {[-10 10], [-10 10]});
 %
 % See also IMAGE, CAXIS, COLORMAP, ICONCAT.
 
@@ -199,6 +199,8 @@ function idisp(im, varargin)
         axes(opt.axis)
     end
     
+    rotate3d off
+    
     if iscell(im)
         % image is a cell array
         [im,ud.u0] = iconcat(im);
@@ -246,7 +248,6 @@ function idisp(im, varargin)
         i_min = 0;
         i_max = 1;
     end
-    set(gca, 'CLim', [i_min, i_max]);
     
     if ~isempty(opt.xydata)
         ud.image = image(gca, opt.xydata{1}, opt.xydata{2}, im, 'CDataMapping', 'scaled');
@@ -313,7 +314,9 @@ function idisp(im, varargin)
         set(gca, 'YDir', 'normal');
     end
     set(ud.image, 'CDataMapping', 'scaled');
-    if ~isempty(opt.cscale)
+    if isempty(opt.cscale)
+            set(gca, 'CLim', [i_min, i_max]);
+    else
         set(gca, 'Clim', opt.cscale);
     end
     
@@ -549,12 +552,12 @@ end
 function histo_callback(ud, src)   
     imdata = get(ud.image, 'CData');
     b = floor(axis);   % bounds of displayed image
-    if b(1) == 0,
+    if b(1) == 0
         b = [1 b(2) 1 b(4)];
     end
     
     figure
-    imdata = double(imdata(b(3):b(4), b(1):b(2),:));
+    imdata = imdata(b(3):b(4), b(1):b(2),:);
     ihist(imdata);
 end
 
